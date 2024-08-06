@@ -1,3 +1,4 @@
+// Updated the ArduinoFFT.h Library to Current 2.0.1 version.
 //Work in progress sketch for live beat detection with fastLED
 //Uses multi threading and parallel processing
 //Core 0 runs an interrupt driven fft
@@ -6,6 +7,8 @@
 //There is a section near the bottom you can uncomment if you want to see whats being analized on the serial plotter
 //Code is not particularly cleaned up but sharing anyway - You have been warned
 
+#include <Arduino.h>
+#include <stddef.h>
 #include <arduinoFFT.h>
 #define FASTLED_ALLOW_INTERRUPTS 1
 #include <FastLED.h>
@@ -82,12 +85,12 @@ void FFTLoop(void * param){
   uint8_t index = 0;//Indicates which data buffer we will be doing the FFT on
   bandVals newBandVals;
   int bandValues[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // The length of these arrays must be >= NUM_BANDS
-  arduinoFFT FFT[2] = {arduinoFFT(localSamples[0], localSamplesImaginary[0], SAMPLES, SAMPLING_FREQ), arduinoFFT(localSamples[1], localSamplesImaginary[1], SAMPLES, SAMPLING_FREQ)};
+  ArduinoFFT<double> FFT[2] = {ArduinoFFT<double>(localSamples[0], localSamplesImaginary[0], SAMPLES, SAMPLING_FREQ), ArduinoFFT<double>(localSamples[1], localSamplesImaginary[1], SAMPLES, SAMPLING_FREQ)};
   //Set up the ADC timer interrupt on core 0
-  timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(timer, &sampleInterrupt, true);
-  timerAlarmWrite(timer, 25, true);
-  timerAlarmEnable(timer);
+  timer = timerBegin(1000000); // https://github.com/adafruit/RadioHead/issues/79
+  timerAttachInterrupt(timer, &sampleInterrupt);
+  //timerAlarmWrite(timer, 25, true);
+  timerAlarm(timer, 25, true, 0);
 
   while(1){
     //Attempt to take a full buffer
@@ -96,10 +99,10 @@ void FFTLoop(void * param){
       continue;
     }
     //We have succesfully taken the semaphore, Begin FFT
-    FFT[index].DCRemoval();
-    FFT[index].Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-    FFT[index].Compute(FFT_FORWARD);
-    FFT[index].ComplexToMagnitude();
+    FFT[index].dcRemoval();
+    FFT[index].windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+    FFT[index].compute(FFT_FORWARD);
+    FFT[index].complexToMagnitude();
     for (int i = 0; i<NUM_BANDS; i++){
       newBandVals.bandValues[i] = 0;
     }
